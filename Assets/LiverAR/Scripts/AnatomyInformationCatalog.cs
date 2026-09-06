@@ -19,7 +19,7 @@ namespace LiverAR.Runtime
 
         public string ToDisplayText()
         {
-            return $"{DisplayName}\n\nOverview\n{Overview}\n\nAnatomical location\n{Location}\n\nBlood supply\n{BloodSupply}\n\nVenous drainage\n{VenousDrainage}\n\nFunction\n{Function}\n\nEducational notes\n{Description}\n\nSource\n{Source}";
+            return $"Overview\n{Overview}\n\nAnatomical location\n{Location}\n\nBlood supply\n{BloodSupply}\n\nVenous drainage\n{VenousDrainage}\n\nFunction\n{Function}";
         }
     }
 
@@ -56,6 +56,7 @@ namespace LiverAR.Runtime
         {
             if (part == null) return Liver;
             if (part.Category == AnatomyCategory.LiverSegment) return ForSegment(part.DisplayName);
+            if (part.Category == AnatomyCategory.Lesion) return ForTumor(part.DisplayName);
             if (part.Category == AnatomyCategory.Vessel)
                 return new AnatomyInformationRecord
                 {
@@ -66,6 +67,19 @@ namespace LiverAR.Runtime
                     Source = "OpenStax, Anatomy and Physiology 2e, 20.1 and 23.6\nhttps://openstax.org/books/anatomy-and-physiology-2e/pages/20-1-structure-and-function-of-blood-vessels"
                 };
             return Liver;
+        }
+
+        public static AnatomyInformationRecord ForTumor(string name)
+        {
+            return new AnatomyInformationRecord
+            {
+                Id = "tumor", DisplayName = string.IsNullOrWhiteSpace(name) ? "Tumor" : name, Category = "Tumor",
+                Overview = "A tumour is an abnormal mass of cells. In this educational model, the tumour is a patient-specific overlay supplied by the imported GLB.",
+                Location = "Its displayed location is aligned to the liver anatomy in the same patient export.",
+                BloodSupply = "Tumour blood supply can vary and is not represented as a diagnostic finding in this application.",
+                VenousDrainage = "Venous relationships depend on the patient-specific anatomy shown in the imported model.",
+                Function = "Use the overlay to study the tumour location relative to liver segments and blood vessels."
+            };
         }
 
         public static readonly string[] SegmentNames = { "Segment I", "Segment II", "Segment III", "Segment IVa", "Segment IVb", "Segment V", "Segment VI", "Segment VII", "Segment VIII" };

@@ -70,6 +70,8 @@ namespace LiverAR.Runtime
                 ConfigureParts(model.transform, metadata);
                 var root = modelWorkspace.Register(model, "Patient Model");
                 root.AnatomyManager.ShowAll();
+                foreach (var part in root.AnatomyManager.Parts)
+                    ApplyInitialVisibility(part);
                 FitToTargetSize(root.transform);
                 Report("Patient GLB loaded successfully.");
             }
@@ -97,22 +99,28 @@ namespace LiverAR.Runtime
                     var collider = meshFilter.GetComponent<MeshCollider>() ?? meshFilter.gameObject.AddComponent<MeshCollider>();
                     collider.sharedMesh = meshFilter.sharedMesh;
                 }
-                part.Configure(ToStructureId(entry.Id), entry.DisplayName, ToCategory(entry), GetPartColor(entry), renderers);
+                part.Configure(ToStructureId(entry.Id), entry.DisplayName, ResolveCategory(entry), GetImportedPartColor(entry), renderers);
+                ApplyInitialVisibility(part);
             }
 
             Physics.SyncTransforms();
         }
 
-        static Color GetPartColor(PatientModelEntry entry)
+        public static Color GetImportedPartColor(PatientModelEntry entry)
         {
-            if (entry.Name.IndexOf("vein", StringComparison.OrdinalIgnoreCase) >= 0)
-                return new Color(0.12f, 0.42f, 0.95f, 1f);
-            if (entry.Name.IndexOf("tumor", StringComparison.OrdinalIgnoreCase) >= 0)
+            var category = ResolveCategory(entry);
+            if (category == AnatomyCategory.Vessel)
+                return new Color(0.25f, 0.08f, 0.42f, 1f);
+            if (category == AnatomyCategory.Lesion)
                 return new Color(0.95f, 0.22f, 0.18f, 1f);
 
-            // Keep the first imported view visually unified; segmentation controls
-            // still identify and isolate each AnatomyPart independently.
-            return new Color(0.72f, 0.12f, 0.10f, 1f);
+            return GetSegmentColor(entry);
+        }
+
+        public static void ApplyInitialVisibility(AnatomyPart part)
+        {
+            if (part != null && part.Category == AnatomyCategory.Lesion)
+                part.SetVisible(false);
         }
 
         void PlaceInFrontOfCamera(Transform root)
@@ -148,7 +156,39 @@ namespace LiverAR.Runtime
         }
 
         static string ToStructureId(string value) => (value ?? "anatomy").ToLowerInvariant().Replace('_', '-').Replace(' ', '-');
-        static AnatomyCategory ToCategory(PatientModelEntry entry) => entry.Name.IndexOf("vein", StringComparison.OrdinalIgnoreCase) >= 0 ? AnatomyCategory.Vessel : entry.Name.IndexOf("tumor", StringComparison.OrdinalIgnoreCase) >= 0 ? AnatomyCategory.Lesion : AnatomyCategory.LiverSegment;
+        public static AnatomyCategory ResolveCategory(PatientModelEntry entry)
+        {
+            if (entry == null)
+                return AnatomyCategory.Other;
+
+            if (string.Equals(entry.Role, "vessels", StringComparison.OrdinalIgnoreCase))
+                return AnatomyCategory.Vessel;
+            if (entry.Name.IndexOf("tumor", StringComparison.OrdinalIgnoreCase) >= 0)
+                return AnatomyCategory.Lesion;
+            if (string.Equals(entry.Role, "anatomy", StringComparison.OrdinalIgnoreCase))
+                return AnatomyCategory.LiverSegment;
+            if (entry.Name.IndexOf("vein", StringComparison.OrdinalIgnoreCase) >= 0 || entry.Name.IndexOf("vessel", StringComparison.OrdinalIgnoreCase) >= 0)
+                return AnatomyCategory.Vessel;
+            return AnatomyCategory.LiverSegment;
+        }
+
+        static Color GetSegmentColor(PatientModelEntry entry)
+        {
+            var segmentId = ToStructureId(entry != null ? entry.Id : string.Empty);
+            return segmentId switch
+            {
+                "segment-i" => new Color(0.90f, 0.35f, 0.26f, 1f),
+                "segment-ii" => new Color(0.96f, 0.65f, 0.20f, 1f),
+                "segment-iii" => new Color(0.86f, 0.80f, 0.20f, 1f),
+                "segment-iva" => new Color(0.41f, 0.74f, 0.30f, 1f),
+                "segment-ivb" => new Color(0.18f, 0.70f, 0.56f, 1f),
+                "segment-v" => new Color(0.18f, 0.54f, 0.84f, 1f),
+                "segment-vi" => new Color(0.37f, 0.34f, 0.82f, 1f),
+                "segment-vii" => new Color(0.64f, 0.28f, 0.76f, 1f),
+                "segment-viii" => new Color(0.86f, 0.30f, 0.58f, 1f),
+                _ => new Color(0.72f, 0.12f, 0.10f, 1f)
+            };
+        }
         void Report(string message) { StatusChanged?.Invoke(message); Debug.Log(message); }
     }
 }

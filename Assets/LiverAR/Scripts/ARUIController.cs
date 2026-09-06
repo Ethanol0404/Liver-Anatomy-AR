@@ -32,7 +32,9 @@ namespace LiverAR.Runtime
         [FormerlySerializedAs("segmentationPanel")]
         [SerializeField] GameObject couinaudSegmentsPanel;
         [SerializeField] GameObject vesselPanel;
+        [SerializeField] GameObject tumorPanel;
         [SerializeField] GameObject informationPanel;
+        [SerializeField] GameObject compactInformationPanel;
         [SerializeField] GameObject transparencyPanel;
         [SerializeField] Text transparencyTitleText;
         [SerializeField] GameObject settingsPanel;
@@ -61,6 +63,7 @@ namespace LiverAR.Runtime
         Image modelMessageBackground;
         readonly List<Toggle> segmentToggles = new List<Toggle>();
         readonly List<Toggle> vesselToggles = new List<Toggle>();
+        readonly List<Toggle> tumorToggles = new List<Toggle>();
         bool buttonsBound;
 
         void Awake()
@@ -197,6 +200,7 @@ namespace LiverAR.Runtime
         public void OpenSegmentationMenu()
         {
             UpdateVesselOptionVisibility();
+            UpdateTumorOptionVisibility();
             SetNavigationPanel(segmentationMenuPanel);
         }
         public void OpenCouinaudSegmentsPanel()
@@ -212,10 +216,15 @@ namespace LiverAR.Runtime
             RebuildVesselToggles();
             SetNavigationPanel(vesselPanel);
         }
+        public void OpenTumorPanel()
+        {
+            RebuildTumorToggles();
+            SetNavigationPanel(tumorPanel);
+        }
         public void OpenInformationPanelForSelection()
         {
             EnsureDetailPanels();
-            RenderInformationDetail(AnatomyInformationCatalog.ForPart(CurrentAnatomyManager != null ? CurrentAnatomyManager.SelectedPart : null), false);
+            RenderCompactInformation(AnatomyInformationCatalog.ForPart(CurrentAnatomyManager != null ? CurrentAnatomyManager.SelectedPart : null));
         }
         public void OpenInformationMenu()
         {
@@ -326,6 +335,8 @@ namespace LiverAR.Runtime
         public void HideAllSegments() => SetCategoryVisible(CurrentAnatomyManager, AnatomyCategory.LiverSegment, false, segmentToggles);
         public void ShowAllVessels() => SetCategoryVisible(CurrentAnatomyManager, AnatomyCategory.Vessel, true, vesselToggles);
         public void HideAllVessels() => SetCategoryVisible(CurrentAnatomyManager, AnatomyCategory.Vessel, false, vesselToggles);
+        public void ShowAllTumors() => SetCategoryVisible(CurrentAnatomyManager, AnatomyCategory.Lesion, true, tumorToggles);
+        public void HideAllTumors() => SetCategoryVisible(CurrentAnatomyManager, AnatomyCategory.Lesion, false, tumorToggles);
 
         public void IsolateSelected()
         {
@@ -418,6 +429,7 @@ namespace LiverAR.Runtime
         public void CloseDetailOverlays()
         {
             SetPanelActive(informationPanel, null);
+            SetPanelActive(compactInformationPanel, null);
             SetPanelActive(transparencyPanel, null);
         }
 
@@ -429,6 +441,16 @@ namespace LiverAR.Runtime
             var vesselButton = segmentationMenuPanel.transform.Find("Blood Vessel Button") ?? segmentationMenuPanel.transform.Find("Vessels Button");
             if (vesselButton != null)
                 vesselButton.gameObject.SetActive(HasAnatomyPart(AnatomyCategory.Vessel));
+        }
+
+        void UpdateTumorOptionVisibility()
+        {
+            if (segmentationMenuPanel == null)
+                return;
+
+            var tumorButton = segmentationMenuPanel.transform.Find("Tumor Button");
+            if (tumorButton != null)
+                tumorButton.gameObject.SetActive(HasAnatomyPart(AnatomyCategory.Lesion));
         }
 
         bool HasAnatomyPart(AnatomyCategory category)
@@ -473,9 +495,11 @@ namespace LiverAR.Runtime
             SetPanelActive(segmentationMenuPanel, activePanel);
             SetPanelActive(couinaudSegmentsPanel, activePanel);
             SetPanelActive(vesselPanel, activePanel);
+            SetPanelActive(tumorPanel, activePanel);
             SetPanelActive(settingsPanel, activePanel);
             SetPanelActive(modelMenuPanel, activePanel);
             SetPanelActive(informationPanel, activePanel);
+            SetPanelActive(compactInformationPanel, activePanel);
             SetPanelActive(transparencyPanel, activePanel);
         }
 
@@ -606,10 +630,11 @@ namespace LiverAR.Runtime
 
         void RenderInformationHome()
         {
-            RebuildInformationPanel("Information", new[] { "Liver", "Couinaud Segmentation", "Blood Vessel", "Liver Disease" },
+            RebuildInformationPanel("Information", new[] { "Liver", "Couinaud Segmentation", "Blood Vessel", "Tumor", "Liver Disease" },
                 new[] { (UnityEngine.Events.UnityAction)(() => RenderInformationDetail(AnatomyInformationCatalog.Liver, true)),
                     () => RenderInformationList("Couinaud Segmentation", AnatomyInformationCatalog.SegmentNames, AnatomyInformationCatalog.ForSegment),
                     () => RenderInformationList("Blood Vessel", GetAvailableVesselNames(), AnatomyInformationCatalog.ForVessel),
+                    () => RenderInformationList("Tumor", GetAvailableTumorNames(), AnatomyInformationCatalog.ForTumor),
                     () => RenderInformationList("Liver Disease", AnatomyInformationCatalog.DiseaseNames, AnatomyInformationCatalog.ForDisease) }, true);
         }
 
@@ -617,7 +642,7 @@ namespace LiverAR.Runtime
         {
             EnsureDetailPanels();
             ClearInformationPanel();
-            CreateRuntimeText(informationPanel.transform, "Information Title", title, 18, TextAnchor.MiddleCenter, new Vector2(.06f, .88f), new Vector2(.94f, .98f));
+            CreateRuntimeText(informationPanel.transform, "Information Title", title, 24, TextAnchor.MiddleCenter, new Vector2(.06f, .88f), new Vector2(.94f, .98f));
             var viewport = new GameObject("Information List Viewport", typeof(RectTransform), typeof(RectMask2D));
             viewport.transform.SetParent(informationPanel.transform, false);
             SetAnchors(viewport.GetComponent<RectTransform>(), new Vector2(.06f, .18f), new Vector2(.94f, .86f));
@@ -632,6 +657,7 @@ namespace LiverAR.Runtime
             {
                 var record = recordFactory(name);
                 var button = CreateRuntimeButton(content.transform, record.DisplayName, Vector2.zero, Vector2.one, () => RenderInformationDetail(record, true));
+                SetRuntimeButtonFontSize(button, 18);
                 var element = button.gameObject.AddComponent<LayoutElement>(); element.preferredHeight = 52f; element.minHeight = 52f;
             }
             CreateRuntimeButton(informationPanel.transform, "Back", new Vector2(.06f, .04f), new Vector2(.40f, .11f), RenderInformationHome);
@@ -643,14 +669,14 @@ namespace LiverAR.Runtime
         {
             EnsureDetailPanels();
             ClearInformationPanel();
-            CreateRuntimeText(informationPanel.transform, "Information Title", record.DisplayName, 18, TextAnchor.MiddleCenter, new Vector2(.06f, .88f), new Vector2(.94f, .98f));
+            CreateRuntimeText(informationPanel.transform, "Information Title", record.DisplayName, 24, TextAnchor.MiddleCenter, new Vector2(.06f, .88f), new Vector2(.94f, .98f));
             var viewport = new GameObject("Information Detail Viewport", typeof(RectTransform), typeof(RectMask2D));
             viewport.transform.SetParent(informationPanel.transform, false);
             SetAnchors(viewport.GetComponent<RectTransform>(), new Vector2(.06f, .18f), new Vector2(.94f, .86f));
             var content = new GameObject("Information Detail Content", typeof(RectTransform), typeof(ContentSizeFitter));
             content.transform.SetParent(viewport.transform, false);
             var contentRect = content.GetComponent<RectTransform>(); contentRect.anchorMin = new Vector2(0f, 1f); contentRect.anchorMax = new Vector2(1f, 1f); contentRect.pivot = new Vector2(.5f, 1f);
-            var text = CreateRuntimeText(content.transform, "Information Body", record.ToDisplayText(), 14, TextAnchor.UpperLeft, Vector2.zero, Vector2.one);
+            var text = CreateRuntimeText(content.transform, "Information Body", record.ToDisplayText(), 20, TextAnchor.UpperLeft, Vector2.zero, Vector2.one);
             text.horizontalOverflow = HorizontalWrapMode.Wrap; text.verticalOverflow = VerticalWrapMode.Overflow;
             var textRect = text.rectTransform;
             textRect.anchorMin = new Vector2(0f, 1f); textRect.anchorMax = new Vector2(1f, 1f); textRect.pivot = new Vector2(.5f, 1f);
@@ -678,6 +704,43 @@ namespace LiverAR.Runtime
             return new[] { "Blood Vessel Overview" };
         }
 
+        string[] GetAvailableTumorNames()
+        {
+            var manager = CurrentAnatomyManager;
+            if (manager != null && HasAnatomyPart(AnatomyCategory.Lesion))
+            {
+                var names = new List<string>();
+                foreach (var part in manager.Parts)
+                    if (part != null && part.Category == AnatomyCategory.Lesion && !names.Contains(part.DisplayName)) names.Add(part.DisplayName);
+                if (names.Count > 0) return names.ToArray();
+            }
+            return new[] { "Tumor Overview" };
+        }
+
+        void RenderCompactInformation(AnatomyInformationRecord record)
+        {
+            EnsureDetailPanels();
+            SetPanelActive(informationPanel, null);
+            ClearCompactInformationPanel();
+            CreateRuntimeText(compactInformationPanel.transform, "Information Title", record.DisplayName, 16, TextAnchor.MiddleCenter, new Vector2(.06f, .84f), new Vector2(.94f, .97f));
+            var viewport = new GameObject("Compact Information Viewport", typeof(RectTransform), typeof(RectMask2D));
+            viewport.transform.SetParent(compactInformationPanel.transform, false);
+            SetAnchors(viewport.GetComponent<RectTransform>(), new Vector2(.06f, .22f), new Vector2(.94f, .80f));
+            var content = new GameObject("Compact Information Content", typeof(RectTransform), typeof(ContentSizeFitter));
+            content.transform.SetParent(viewport.transform, false);
+            var contentRect = content.GetComponent<RectTransform>(); contentRect.anchorMin = new Vector2(0f, 1f); contentRect.anchorMax = new Vector2(1f, 1f); contentRect.pivot = new Vector2(.5f, 1f);
+            var text = CreateRuntimeText(content.transform, "Information Body", record.ToDisplayText(), 14, TextAnchor.UpperLeft, Vector2.zero, Vector2.one);
+            text.horizontalOverflow = HorizontalWrapMode.Wrap; text.verticalOverflow = VerticalWrapMode.Overflow;
+            Canvas.ForceUpdateCanvases();
+            var height = Mathf.Max(360f, text.preferredHeight + 20f);
+            contentRect.sizeDelta = new Vector2(0f, height); text.rectTransform.sizeDelta = new Vector2(0f, height);
+            content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            var scroll = viewport.AddComponent<ScrollRect>(); scroll.viewport = viewport.GetComponent<RectTransform>(); scroll.content = contentRect; scroll.horizontal = false; scroll.vertical = true; scroll.movementType = ScrollRect.MovementType.Clamped;
+            CreateRuntimeButton(compactInformationPanel.transform, "Close", new Vector2(.32f, .05f), new Vector2(.36f, .12f), () => SetPanelActive(compactInformationPanel, null));
+            compactInformationPanel.SetActive(true);
+            compactInformationPanel.transform.SetAsLastSibling();
+        }
+
         void ClearInformationPanel()
         {
             foreach (Transform child in informationPanel.transform)
@@ -688,17 +751,26 @@ namespace LiverAR.Runtime
             informationBodyText = null;
         }
 
+        void ClearCompactInformationPanel()
+        {
+            foreach (Transform child in compactInformationPanel.transform)
+            {
+                child.gameObject.SetActive(false);
+                Destroy(child.gameObject);
+            }
+        }
+
         void RebuildInformationPanel(string title, string[] labels, UnityEngine.Events.UnityAction[] actions, bool showHomeBack)
         {
             EnsureDetailPanels();
             ClearInformationPanel();
-            CreateRuntimeText(informationPanel.transform, "Information Title", title, 18, TextAnchor.MiddleCenter, new Vector2(.06f, .88f), new Vector2(.94f, .98f));
+            CreateRuntimeText(informationPanel.transform, "Information Title", title, 24, TextAnchor.MiddleCenter, new Vector2(.06f, .88f), new Vector2(.94f, .98f));
             var viewport = new GameObject("Information Category Viewport", typeof(RectTransform), typeof(RectMask2D));
             viewport.transform.SetParent(informationPanel.transform, false); SetAnchors(viewport.GetComponent<RectTransform>(), new Vector2(.06f, .18f), new Vector2(.94f, .86f));
             var content = new GameObject("Information Category Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter)); content.transform.SetParent(viewport.transform, false);
             var contentRect = content.GetComponent<RectTransform>(); contentRect.anchorMin = new Vector2(0f, 1f); contentRect.anchorMax = new Vector2(1f, 1f); contentRect.pivot = new Vector2(.5f, 1f);
             var layout = content.GetComponent<VerticalLayoutGroup>(); layout.spacing = 8f; layout.childControlWidth = true; layout.childControlHeight = true; layout.childForceExpandHeight = false; content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            for (var i = 0; i < labels.Length; i++) { var button = CreateRuntimeButton(content.transform, labels[i], Vector2.zero, Vector2.one, actions[i]); var element = button.gameObject.AddComponent<LayoutElement>(); element.preferredHeight = 58f; element.minHeight = 58f; }
+            for (var i = 0; i < labels.Length; i++) { var button = CreateRuntimeButton(content.transform, labels[i], Vector2.zero, Vector2.one, actions[i]); SetRuntimeButtonFontSize(button, 18); var element = button.gameObject.AddComponent<LayoutElement>(); element.preferredHeight = 58f; element.minHeight = 58f; }
             CreateRuntimeButton(informationPanel.transform, "Back", new Vector2(.06f, .04f), new Vector2(.40f, .11f), showHomeBack ? CloseInformationPanel : RenderInformationHome);
             CreateRuntimeButton(informationPanel.transform, "Close", new Vector2(.54f, .04f), new Vector2(.40f, .11f), CloseInformationPanel);
             var scroll = viewport.AddComponent<ScrollRect>(); scroll.viewport = viewport.GetComponent<RectTransform>(); scroll.content = contentRect; scroll.horizontal = false; scroll.vertical = true;
@@ -910,10 +982,11 @@ namespace LiverAR.Runtime
             CreateRuntimeButton(compactMenuPanel.transform, "Information", new Vector2(0.08f, 0.22f), new Vector2(0.84f, 0.16f), OpenInformationMenu);
             CreateRuntimeButton(compactMenuPanel.transform, "Reset Placement", new Vector2(0.08f, 0.04f), new Vector2(0.84f, 0.14f), ResetPlacement);
 
-            segmentationMenuPanel = CreateRuntimePanel(root, "Segmentation Menu", new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.30f));
-            CreateRuntimeButton(segmentationMenuPanel.transform, "Couinaud Segments", new Vector2(0.08f, 0.66f), new Vector2(0.84f, 0.20f), OpenCouinaudSegmentsPanel);
-            CreateRuntimeButton(segmentationMenuPanel.transform, "Blood Vessel", new Vector2(0.08f, 0.40f), new Vector2(0.84f, 0.20f), OpenVesselsPanel);
-            CreateRuntimeButton(segmentationMenuPanel.transform, "Back", new Vector2(0.08f, 0.14f), new Vector2(0.84f, 0.20f), ToggleMenu);
+            segmentationMenuPanel = CreateRuntimePanel(root, "Segmentation Menu", new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.38f));
+            CreateRuntimeButton(segmentationMenuPanel.transform, "Couinaud Segments", new Vector2(0.08f, 0.72f), new Vector2(0.84f, 0.16f), OpenCouinaudSegmentsPanel);
+            CreateRuntimeButton(segmentationMenuPanel.transform, "Blood Vessel", new Vector2(0.08f, 0.50f), new Vector2(0.84f, 0.16f), OpenVesselsPanel);
+            CreateRuntimeButton(segmentationMenuPanel.transform, "Tumor", new Vector2(0.08f, 0.28f), new Vector2(0.84f, 0.16f), OpenTumorPanel).gameObject.SetActive(false);
+            CreateRuntimeButton(segmentationMenuPanel.transform, "Back", new Vector2(0.08f, 0.06f), new Vector2(0.84f, 0.16f), ToggleMenu);
 
             couinaudSegmentsPanel = CreateRuntimePanel(root, "Couinaud Segments Panel", new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.58f));
             CreateRuntimeButton(couinaudSegmentsPanel.transform, "Show All", new Vector2(0.08f, 0.18f), new Vector2(0.40f, 0.10f), ShowAllSegments);
@@ -925,9 +998,15 @@ namespace LiverAR.Runtime
             CreateRuntimeButton(vesselPanel.transform, "Hide All", new Vector2(0.52f, 0.18f), new Vector2(0.40f, 0.10f), HideAllVessels);
             CreateRuntimeButton(vesselPanel.transform, "Close", new Vector2(0.30f, 0.04f), new Vector2(0.40f, 0.10f), ClosePanels);
 
-            informationPanel = CreateRuntimePanel(root, "Information Panel", new Vector2(0.55f, 0.16f), new Vector2(0.40f, 0.48f));
+            tumorPanel = CreateRuntimePanel(root, "Tumor Panel", new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.58f));
+            CreateRuntimeButton(tumorPanel.transform, "Show All", new Vector2(0.08f, 0.18f), new Vector2(0.40f, 0.10f), ShowAllTumors);
+            CreateRuntimeButton(tumorPanel.transform, "Hide All", new Vector2(0.52f, 0.18f), new Vector2(0.40f, 0.10f), HideAllTumors);
+            CreateRuntimeButton(tumorPanel.transform, "Close", new Vector2(0.30f, 0.04f), new Vector2(0.40f, 0.10f), ClosePanels);
+
+            informationPanel = CreateRuntimePanel(root, "Information Panel", new Vector2(0.50f, 0.08f), new Vector2(0.46f, 0.84f));
             informationBodyText = CreateRuntimeText(informationPanel.transform, "Information Body", "Select an anatomical structure to view details.", 15, TextAnchor.UpperLeft, new Vector2(0.06f, 0.20f), new Vector2(0.94f, 0.94f));
             CreateRuntimeButton(informationPanel.transform, "Close", new Vector2(0.32f, 0.04f), new Vector2(0.36f, 0.12f), () => SetPanelActive(informationPanel, null));
+            compactInformationPanel = CreateRuntimePanel(root, "Compact Information Panel", new Vector2(0.55f, 0.16f), new Vector2(0.40f, 0.30f));
 
             transparencyPanel = CreateRuntimePanel(root, "Transparency Panel", new Vector2(0.34f, 0.37f), new Vector2(0.34f, 0.14f));
             transparencyTitleText = CreateRuntimeText(transparencyPanel.transform, "Transparency Title", "Opacity: no selection", 14, TextAnchor.MiddleCenter, new Vector2(0.05f, 0.58f), new Vector2(0.95f, 0.94f));
@@ -973,16 +1052,14 @@ namespace LiverAR.Runtime
 
             if (segmentationMenuPanel == null)
             {
-                segmentationMenuPanel = CreateRuntimePanel(root, "Segmentation Menu", new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.30f));
-                CreateRuntimeButton(segmentationMenuPanel.transform, "Couinaud Segments", new Vector2(0.08f, 0.66f), new Vector2(0.84f, 0.20f), OpenCouinaudSegmentsPanel);
-                CreateRuntimeButton(segmentationMenuPanel.transform, "Blood Vessel", new Vector2(0.08f, 0.40f), new Vector2(0.84f, 0.20f), OpenVesselsPanel);
-                CreateRuntimeButton(segmentationMenuPanel.transform, "Back", new Vector2(0.08f, 0.14f), new Vector2(0.84f, 0.20f), ToggleMenu);
+                segmentationMenuPanel = CreateRuntimePanel(root, "Segmentation Menu", new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.38f));
             }
-            else
-            {
-                EnsurePanelButton(segmentationMenuPanel, "Blood Vessel", new Vector2(0.08f, 0.40f), new Vector2(0.84f, 0.20f), OpenVesselsPanel);
-                HidePanelChild(segmentationMenuPanel, "Vessels Button");
-            }
+            SetAnchors(segmentationMenuPanel.GetComponent<RectTransform>(), new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.38f));
+            EnsurePanelButton(segmentationMenuPanel, "Couinaud Segments", new Vector2(0.08f, 0.72f), new Vector2(0.84f, 0.16f), OpenCouinaudSegmentsPanel);
+            EnsurePanelButton(segmentationMenuPanel, "Blood Vessel", new Vector2(0.08f, 0.50f), new Vector2(0.84f, 0.16f), OpenVesselsPanel);
+            EnsurePanelButton(segmentationMenuPanel, "Tumor", new Vector2(0.08f, 0.28f), new Vector2(0.84f, 0.16f), OpenTumorPanel);
+            EnsurePanelButton(segmentationMenuPanel, "Back", new Vector2(0.08f, 0.06f), new Vector2(0.84f, 0.16f), ToggleMenu);
+            HidePanelChild(segmentationMenuPanel, "Vessels Button");
 
             if (couinaudSegmentsPanel == null)
                 couinaudSegmentsPanel = CreateRuntimePanel(root, "Couinaud Segments Panel", new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.58f));
@@ -996,6 +1073,14 @@ namespace LiverAR.Runtime
                 CreateRuntimeButton(vesselPanel.transform, "Show All", new Vector2(0.08f, 0.18f), new Vector2(0.40f, 0.10f), ShowAllVessels);
                 CreateRuntimeButton(vesselPanel.transform, "Hide All", new Vector2(0.52f, 0.18f), new Vector2(0.40f, 0.10f), HideAllVessels);
                 CreateRuntimeButton(vesselPanel.transform, "Close", new Vector2(0.30f, 0.04f), new Vector2(0.40f, 0.10f), ClosePanels);
+            }
+
+            if (tumorPanel == null)
+            {
+                tumorPanel = CreateRuntimePanel(root, "Tumor Panel", new Vector2(0.04f, 0.13f), new Vector2(0.32f, 0.58f));
+                CreateRuntimeButton(tumorPanel.transform, "Show All", new Vector2(0.08f, 0.18f), new Vector2(0.40f, 0.10f), ShowAllTumors);
+                CreateRuntimeButton(tumorPanel.transform, "Hide All", new Vector2(0.52f, 0.18f), new Vector2(0.40f, 0.10f), HideAllTumors);
+                CreateRuntimeButton(tumorPanel.transform, "Close", new Vector2(0.30f, 0.04f), new Vector2(0.40f, 0.10f), ClosePanels);
             }
 
             if (transparencyPanel == null)
@@ -1021,12 +1106,13 @@ namespace LiverAR.Runtime
             var root = transform;
             if (informationPanel == null)
             {
-                informationPanel = CreateRuntimePanel(root, "Information Panel", new Vector2(0.55f, 0.16f), new Vector2(0.40f, 0.30f));
-                informationBodyText = CreateRuntimeText(informationPanel.transform, "Information Body", "Select an anatomical structure to view details.", 15, TextAnchor.UpperLeft, new Vector2(0.06f, 0.24f), new Vector2(0.94f, 0.94f));
+                informationPanel = CreateRuntimePanel(root, "Information Panel", new Vector2(0.50f, 0.08f), new Vector2(0.46f, 0.84f));
             }
+            SetAnchors(informationPanel.GetComponent<RectTransform>(), new Vector2(0.50f, 0.08f), new Vector2(0.46f, 0.84f));
 
-            if (informationBodyText == null && informationPanel != null)
-                informationBodyText = informationPanel.GetComponentInChildren<Text>(true);
+            if (compactInformationPanel == null)
+                compactInformationPanel = CreateRuntimePanel(root, "Compact Information Panel", new Vector2(0.55f, 0.16f), new Vector2(0.40f, 0.30f));
+
             EnsurePanelButton(informationPanel, "Close", new Vector2(0.32f, 0.05f), new Vector2(0.36f, 0.14f), CloseInformationPanel);
 
             if (transparencyPanel == null)
@@ -1218,6 +1304,13 @@ namespace LiverAR.Runtime
             return button;
         }
 
+        static void SetRuntimeButtonFontSize(Button button, int fontSize)
+        {
+            var label = button != null ? button.GetComponentInChildren<Text>(true) : null;
+            if (label != null)
+                label.fontSize = fontSize;
+        }
+
         static Text CreateRuntimeText(Transform parent, string name, string value, int fontSize, TextAnchor alignment, Vector2 anchorMin, Vector2 anchorMax)
         {
             var obj = new GameObject(name);
@@ -1313,6 +1406,11 @@ namespace LiverAR.Runtime
             RebuildAnatomyToggles(vesselPanel, "Vessel Toggle Rows", AnatomyCategory.Vessel, vesselToggles, FormatVesselButtonLabel);
         }
 
+        void RebuildTumorToggles()
+        {
+            RebuildAnatomyToggles(tumorPanel, "Tumor Toggle Rows", AnatomyCategory.Lesion, tumorToggles, FormatTumorButtonLabel);
+        }
+
         void RebuildAnatomyToggles(GameObject panel, string containerName, AnatomyCategory category, List<Toggle> toggles, System.Func<AnatomyPart, int, string> labelFactory)
         {
             var manager = CurrentAnatomyManager;
@@ -1398,6 +1496,11 @@ namespace LiverAR.Runtime
         static string FormatVesselButtonLabel(AnatomyPart part, int index)
         {
             return part != null && !string.IsNullOrWhiteSpace(part.DisplayName) ? part.DisplayName : $"Vessel {index + 1}";
+        }
+
+        static string FormatTumorButtonLabel(AnatomyPart part, int index)
+        {
+            return part != null && !string.IsNullOrWhiteSpace(part.DisplayName) ? part.DisplayName : $"Tumor {index + 1}";
         }
 
         static void EnsureToggleVisual(Toggle toggle, string label, Color? swatchColor)

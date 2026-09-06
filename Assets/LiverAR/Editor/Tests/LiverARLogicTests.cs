@@ -435,6 +435,118 @@ namespace LiverAR.Tests.EditMode
         }
 
         [Test]
+        public void TumorOptionAppearsOnlyWhenTheImportedModelContainsATumor()
+        {
+            var managerObject = new GameObject("manager");
+            var manager = managerObject.AddComponent<AnatomyManager>();
+            var controller = CreateUiController(manager);
+
+            controller.OpenSegmentationMenu();
+
+            var tumorButton = GetPrivateField<GameObject>(controller, "segmentationMenuPanel").transform.Find("Tumor Button").gameObject;
+            Assert.That(tumorButton.activeSelf, Is.False);
+
+            var tumor = CreatePart("tumor", "Tumor", AnatomyCategory.Lesion);
+            manager.Register(tumor);
+            controller.OpenSegmentationMenu();
+
+            Assert.That(tumorButton.activeSelf, Is.True);
+
+            DestroyUiTestObjects(controller, managerObject, tumor.gameObject);
+        }
+
+        [Test]
+        public void ImportedTumorStartsHidden()
+        {
+            var root = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var tumor = root.AddComponent<AnatomyPart>();
+            tumor.Configure("tumor", "Tumor", AnatomyCategory.Lesion, Color.red, new[] { root.GetComponent<Renderer>() });
+
+            RuntimePatientGlbLoader.ApplyInitialVisibility(tumor);
+
+            Assert.That(tumor.IsVisible, Is.False);
+
+            Object.DestroyImmediate(root);
+        }
+
+        [Test]
+        public void PatientMetadataRoleClassifiesBloodVesselsAsVessels()
+        {
+            var vessel = new PatientModelEntry { name = "BloodVessels", role = "vessels" };
+
+            var category = RuntimePatientGlbLoader.ResolveCategory(vessel);
+
+            Assert.That(category, Is.EqualTo(AnatomyCategory.Vessel));
+        }
+
+        [Test]
+        public void ImportedSegmentsUseStableDistinctColours()
+        {
+            var segmentI = RuntimePatientGlbLoader.GetImportedPartColor(new PatientModelEntry { name = "Segment_I", id = "Segment_I", role = "anatomy" });
+            var segmentII = RuntimePatientGlbLoader.GetImportedPartColor(new PatientModelEntry { name = "Segment_II", id = "Segment_II", role = "anatomy" });
+
+            Assert.That(segmentI, Is.Not.EqualTo(segmentII));
+            Assert.That(segmentI, Is.Not.EqualTo(new Color(0.72f, 0.12f, 0.10f, 1f)));
+        }
+
+        [Test]
+        public void ImportedBloodVesselsUseDarkPurple()
+        {
+            var colour = RuntimePatientGlbLoader.GetImportedPartColor(new PatientModelEntry { name = "BloodVessels", role = "vessels" });
+
+            Assert.That(colour.r, Is.LessThan(0.4f));
+            Assert.That(colour.b, Is.GreaterThan(colour.r));
+        }
+
+        [Test]
+        public void StudyAndCompactInformationPanelsStaySeparate()
+        {
+            var managerObject = new GameObject("manager");
+            var manager = managerObject.AddComponent<AnatomyManager>();
+            var part = CreatePart("segment-i", "Segment I", AnatomyCategory.LiverSegment);
+            manager.Register(part);
+            manager.Select(part);
+            var controller = CreateUiController(manager);
+
+            controller.OpenInformationPanelForSelection();
+
+            var compactPanel = GetPrivateField<GameObject>(controller, "compactInformationPanel");
+            Assert.That(compactPanel, Is.Not.Null);
+            Assert.That(compactPanel.activeSelf, Is.True);
+            Assert.That(GetPrivateField<GameObject>(controller, "informationPanel").activeSelf, Is.False);
+
+            controller.OpenInformationMenu();
+
+            Assert.That(compactPanel.activeSelf, Is.False);
+            Assert.That(GetPrivateField<GameObject>(controller, "informationPanel").activeSelf, Is.True);
+
+            DestroyUiTestObjects(controller, managerObject, part.gameObject);
+        }
+
+        [Test]
+        public void InformationTextOmitsEducationalNotesAndSources()
+        {
+            var record = new AnatomyInformationRecord
+            {
+                DisplayName = "Liver",
+                Overview = "Overview text.",
+                Location = "Location text.",
+                BloodSupply = "Blood supply text.",
+                VenousDrainage = "Drainage text.",
+                Function = "Function text.",
+                Description = "Educational text.",
+                Source = "Source text."
+            };
+
+            var displayText = record.ToDisplayText();
+
+            Assert.That(displayText, Does.Not.Contain("Educational notes"));
+            Assert.That(displayText, Does.Not.Contain("Educational text."));
+            Assert.That(displayText, Does.Not.Contain("Source"));
+            Assert.That(displayText, Does.Not.Contain("Source text."));
+        }
+
+        [Test]
         public void ModelSwitcherPreservesTransformAndAvoidsDuplicates()
         {
             var root = new GameObject("placement-root").transform;
