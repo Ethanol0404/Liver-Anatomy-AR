@@ -251,10 +251,10 @@ namespace LiverAR.Runtime
                     continue;
 
                 var outline = new GameObject("Selection Outline");
-                outline.transform.SetParent(source.transform.parent, false);
-                outline.transform.localPosition = source.transform.localPosition;
-                outline.transform.localRotation = source.transform.localRotation;
-                outline.transform.localScale = source.transform.localScale;
+                // An outline is owned by its part, preventing detached contours.
+                outline.transform.SetParent(transform, true);
+                outline.transform.SetPositionAndRotation(source.transform.position, source.transform.rotation);
+                outline.transform.localScale = source.transform.lossyScale;
                 outline.AddComponent<MeshFilter>().sharedMesh = source.sharedMesh;
                 var outlineRenderer = outline.AddComponent<MeshRenderer>();
                 outlineRenderer.sharedMaterial = material;

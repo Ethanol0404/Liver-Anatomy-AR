@@ -69,9 +69,7 @@ namespace LiverAR.Runtime
 
                 ConfigureParts(model.transform, metadata);
                 var root = modelWorkspace.Register(model, "Patient Model");
-                root.AnatomyManager.ShowAll();
-                foreach (var part in root.AnatomyManager.Parts)
-                    ApplyInitialVisibility(part);
+                ApplyImportedModelInitialView(root.AnatomyManager);
                 FitToTargetSize(root.transform);
                 Report("Patient GLB loaded successfully.");
             }
@@ -123,6 +121,30 @@ namespace LiverAR.Runtime
                 part.SetVisible(false);
         }
 
+        public static void ApplyImportedModelInitialView(AnatomyManager anatomyManager)
+        {
+            if (anatomyManager == null)
+                return;
+
+            var hasWholeLiver = false;
+            foreach (var part in anatomyManager.Parts)
+            {
+                if (part != null && part.Category == AnatomyCategory.WholeLiver)
+                {
+                    hasWholeLiver = true;
+                    break;
+                }
+            }
+
+            if (hasWholeLiver)
+                anatomyManager.ShowWholeLiverOverview();
+            else
+                anatomyManager.ShowAll();
+
+            foreach (var part in anatomyManager.Parts)
+                ApplyInitialVisibility(part);
+        }
+
         void PlaceInFrontOfCamera(Transform root)
         {
             var camera = arCamera != null ? arCamera : Camera.main;
@@ -161,6 +183,10 @@ namespace LiverAR.Runtime
             if (entry == null)
                 return AnatomyCategory.Other;
 
+            if (string.Equals(entry.Role, "whole_liver", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(entry.Name, "WholeLiver", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(entry.Id, "WholeLiver", StringComparison.OrdinalIgnoreCase))
+                return AnatomyCategory.WholeLiver;
             if (string.Equals(entry.Role, "vessels", StringComparison.OrdinalIgnoreCase))
                 return AnatomyCategory.Vessel;
             if (entry.Name.IndexOf("tumor", StringComparison.OrdinalIgnoreCase) >= 0)

@@ -480,6 +480,41 @@ namespace LiverAR.Tests.EditMode
         }
 
         [Test]
+        public void PatientMetadataRoleClassifiesWholeLiver()
+        {
+            var wholeLiver = new PatientModelEntry { name = "WholeLiver", id = "WholeLiver", role = "whole_liver" };
+
+            var category = RuntimePatientGlbLoader.ResolveCategory(wholeLiver);
+
+            Assert.That(category, Is.EqualTo(AnatomyCategory.WholeLiver));
+        }
+
+        [Test]
+        public void ImportedModelWithWholeLiverStartsInOverviewMode()
+        {
+            var managerObject = new GameObject("manager");
+            var manager = managerObject.AddComponent<AnatomyManager>();
+            var whole = CreatePart("whole-liver", "Whole Liver", AnatomyCategory.WholeLiver);
+            var segment = CreatePart("segment-i", "Segment I", AnatomyCategory.LiverSegment);
+            var vessel = CreatePart("blood-vessels", "Blood Vessels", AnatomyCategory.Vessel);
+            var tumor = CreatePart("tumor", "Tumor", AnatomyCategory.Lesion);
+            manager.SetConfiguredParts(new[] { whole, segment, vessel, tumor });
+
+            RuntimePatientGlbLoader.ApplyImportedModelInitialView(manager);
+
+            Assert.That(whole.IsVisible, Is.True);
+            Assert.That(segment.IsVisible, Is.False);
+            Assert.That(vessel.IsVisible, Is.True);
+            Assert.That(tumor.IsVisible, Is.False);
+
+            Object.DestroyImmediate(whole.gameObject);
+            Object.DestroyImmediate(segment.gameObject);
+            Object.DestroyImmediate(vessel.gameObject);
+            Object.DestroyImmediate(tumor.gameObject);
+            Object.DestroyImmediate(managerObject);
+        }
+
+        [Test]
         public void ImportedSegmentsUseStableDistinctColours()
         {
             var segmentI = RuntimePatientGlbLoader.GetImportedPartColor(new PatientModelEntry { name = "Segment_I", id = "Segment_I", role = "anatomy" });

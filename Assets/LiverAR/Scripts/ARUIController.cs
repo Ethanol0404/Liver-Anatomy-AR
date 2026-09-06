@@ -65,6 +65,7 @@ namespace LiverAR.Runtime
         readonly List<Toggle> vesselToggles = new List<Toggle>();
         readonly List<Toggle> tumorToggles = new List<Toggle>();
         bool buttonsBound;
+        bool transparencyLayoutBuilt;
 
         void Awake()
         {
@@ -642,10 +643,10 @@ namespace LiverAR.Runtime
         {
             EnsureDetailPanels();
             ClearInformationPanel();
-            CreateRuntimeText(informationPanel.transform, "Information Title", title, 24, TextAnchor.MiddleCenter, new Vector2(.06f, .88f), new Vector2(.94f, .98f));
+            CreateRuntimeText(informationPanel.transform, "Information Title", title, 24, TextAnchor.MiddleCenter, new Vector2(.06f, .86f), new Vector2(.94f, .96f));
             var viewport = new GameObject("Information List Viewport", typeof(RectTransform), typeof(RectMask2D));
             viewport.transform.SetParent(informationPanel.transform, false);
-            SetAnchors(viewport.GetComponent<RectTransform>(), new Vector2(.06f, .18f), new Vector2(.94f, .86f));
+            SetAnchors(viewport.GetComponent<RectTransform>(), new Vector2(.06f, .20f), new Vector2(.88f, .60f));
             var content = new GameObject("Information List Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
             content.transform.SetParent(viewport.transform, false);
             var contentRect = content.GetComponent<RectTransform>();
@@ -669,10 +670,10 @@ namespace LiverAR.Runtime
         {
             EnsureDetailPanels();
             ClearInformationPanel();
-            CreateRuntimeText(informationPanel.transform, "Information Title", record.DisplayName, 24, TextAnchor.MiddleCenter, new Vector2(.06f, .88f), new Vector2(.94f, .98f));
+            CreateRuntimeText(informationPanel.transform, "Information Title", record.DisplayName, 24, TextAnchor.MiddleCenter, new Vector2(.06f, .86f), new Vector2(.94f, .96f));
             var viewport = new GameObject("Information Detail Viewport", typeof(RectTransform), typeof(RectMask2D));
             viewport.transform.SetParent(informationPanel.transform, false);
-            SetAnchors(viewport.GetComponent<RectTransform>(), new Vector2(.06f, .18f), new Vector2(.94f, .86f));
+            SetAnchors(viewport.GetComponent<RectTransform>(), new Vector2(.06f, .20f), new Vector2(.88f, .60f));
             var content = new GameObject("Information Detail Content", typeof(RectTransform), typeof(ContentSizeFitter));
             content.transform.SetParent(viewport.transform, false);
             var contentRect = content.GetComponent<RectTransform>(); contentRect.anchorMin = new Vector2(0f, 1f); contentRect.anchorMax = new Vector2(1f, 1f); contentRect.pivot = new Vector2(.5f, 1f);
@@ -1115,22 +1116,28 @@ namespace LiverAR.Runtime
 
             EnsurePanelButton(informationPanel, "Close", new Vector2(0.32f, 0.05f), new Vector2(0.36f, 0.14f), CloseInformationPanel);
 
-            if (transparencyPanel == null)
-            {
-                transparencyPanel = CreateRuntimePanel(root, "Transparency Panel", new Vector2(0.34f, 0.34f), new Vector2(0.34f, 0.22f));
-                transparencyTitleText = CreateRuntimeText(transparencyPanel.transform, "Transparency Title", "Opacity: no selection", 14, TextAnchor.MiddleCenter, new Vector2(0.05f, 0.70f), new Vector2(0.95f, 0.94f));
-                selectedOpacitySlider = CreateRuntimeSlider(transparencyPanel.transform, "Selected Opacity", new Vector2(0.08f, 0.43f), new Vector2(0.84f, 0.15f), 0f, 1f, 1f);
-            }
-
-            if (selectedOpacitySlider == null && transparencyPanel != null)
-                selectedOpacitySlider = transparencyPanel.GetComponentInChildren<Slider>(true);
-            if (selectedOpacitySlider == null && transparencyPanel != null)
-                selectedOpacitySlider = CreateRuntimeSlider(transparencyPanel.transform, "Selected Opacity", new Vector2(0.08f, 0.43f), new Vector2(0.84f, 0.15f), 0f, 1f, 1f);
-            BindSelectedOpacitySlider();
-
-            EnsurePanelButton(transparencyPanel, "Reset", new Vector2(0.08f, 0.10f), new Vector2(0.36f, 0.18f), ResetSelectedTransparency);
-            EnsurePanelButton(transparencyPanel, "Close", new Vector2(0.56f, 0.10f), new Vector2(0.36f, 0.18f), () => SetPanelActive(transparencyPanel, null));
+            EnsureTransparencyPanelLayout(root);
             EnsurePanelButton(settingsPanel, "User Manual", new Vector2(0.08f, 0.08f), new Vector2(0.40f, 0.12f), OpenUserManual);
+        }
+
+        void EnsureTransparencyPanelLayout(Transform root)
+        {
+            if (transparencyPanel == null)
+                transparencyPanel = CreateRuntimePanel(root, "Transparency Panel", new Vector2(0.34f, 0.34f), new Vector2(0.34f, 0.22f));
+
+            SetAnchors(transparencyPanel.GetComponent<RectTransform>(), new Vector2(0.34f, 0.34f), new Vector2(0.34f, 0.22f));
+            if (transparencyLayoutBuilt)
+                return;
+
+            foreach (Transform child in transparencyPanel.transform)
+                Destroy(child.gameObject);
+
+            transparencyTitleText = CreateRuntimeText(transparencyPanel.transform, "Transparency Title", "Opacity: no selection", 14, TextAnchor.MiddleCenter, new Vector2(0.08f, 0.72f), new Vector2(0.92f, 0.92f));
+            selectedOpacitySlider = CreateRuntimeSlider(transparencyPanel.transform, "Selected Opacity", new Vector2(0.08f, 0.46f), new Vector2(0.84f, 0.15f), 0f, 1f, 1f);
+            BindSelectedOpacitySlider();
+            CreateRuntimeButton(transparencyPanel.transform, "Reset", new Vector2(0.08f, 0.12f), new Vector2(0.36f, 0.18f), ResetSelectedTransparency);
+            CreateRuntimeButton(transparencyPanel.transform, "Close", new Vector2(0.56f, 0.12f), new Vector2(0.36f, 0.18f), () => SetPanelActive(transparencyPanel, null));
+            transparencyLayoutBuilt = true;
         }
 
         void BindSelectedOpacitySlider()
