@@ -171,14 +171,7 @@ namespace LiverAR.Runtime
                 if (material == null)
                     continue;
 
-                if (material.shader == null || material.shader.name == "Hidden/InternalErrorShader")
-                {
-                    var fallbackShader = Shader.Find("Universal Render Pipeline/Lit");
-                    if (fallbackShader == null)
-                        fallbackShader = Shader.Find("Standard");
-                    if (fallbackShader != null)
-                        material.shader = fallbackShader;
-                }
+                EnsureRuntimeOpacityShader(material, alpha);
 
                 if (!originalRenderQueues.ContainsKey(material))
                     originalRenderQueues[material] = material.renderQueue;
@@ -212,6 +205,23 @@ namespace LiverAR.Runtime
                 material.SetShaderPassEnabled("ShadowCaster", false);
                 material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             }
+        }
+
+        static void EnsureRuntimeOpacityShader(Material material, float alpha)
+        {
+            if (alpha >= 0.99f || (material.shader != null && material.shader.name == "Universal Render Pipeline/Lit"))
+                return;
+
+            var transparentShader = Shader.Find("Universal Render Pipeline/Lit");
+            if (transparentShader == null)
+                return;
+
+            // glTFast materials are generated as opaque Shader Graph materials.
+            // URP Lit provides a runtime blend mode that responds to decimal alpha.
+            var mainTexture = material.mainTexture;
+            material.shader = transparentShader;
+            if (mainTexture != null)
+                material.mainTexture = mainTexture;
         }
     }
 }

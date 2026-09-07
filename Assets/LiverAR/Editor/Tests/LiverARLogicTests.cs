@@ -213,6 +213,24 @@ namespace LiverAR.Tests.EditMode
         }
 
         [Test]
+        public void PartialOpacityUsesTransparentUrpMaterialForOpaqueSourceMaterial()
+        {
+            var root = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var renderer = root.GetComponent<Renderer>();
+            renderer.material = new Material(Shader.Find("Unlit/Color"));
+            var part = root.AddComponent<AnatomyPart>();
+            part.Configure("segment-i", "Segment I", AnatomyCategory.LiverSegment, Color.red, new[] { renderer });
+
+            part.SetOpacity(0.4f);
+
+            Assert.That(renderer.material.shader.name, Is.EqualTo("Universal Render Pipeline/Lit"));
+            Assert.That(renderer.material.GetFloat("_Surface"), Is.EqualTo(1f));
+            Assert.That(renderer.material.color.a, Is.EqualTo(0.4f).Within(0.001f));
+
+            Object.DestroyImmediate(root);
+        }
+
+        [Test]
         public void ZeroOpacityHidesAnatomyPartButKeepsItsOpacityState()
         {
             var root = GameObject.CreatePrimitive(PrimitiveType.Cube);
