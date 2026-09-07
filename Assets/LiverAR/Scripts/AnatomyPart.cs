@@ -15,6 +15,7 @@ namespace LiverAR.Runtime
 
         MaterialPropertyBlock propertyBlock;
         AnatomySelectionOutline selectionOutline;
+        static Material runtimeOpacityTemplate;
         readonly Dictionary<Material, int> originalRenderQueues = new Dictionary<Material, int>();
         Collider[] colliders = Array.Empty<Collider>();
         float opacity = 1f;
@@ -171,7 +172,7 @@ namespace LiverAR.Runtime
                 if (material == null)
                     continue;
 
-                EnsureRuntimeOpacityShader(material, alpha);
+                EnsureRuntimeOpacityShader(material);
 
                 if (!originalRenderQueues.ContainsKey(material))
                     originalRenderQueues[material] = material.renderQueue;
@@ -207,21 +208,28 @@ namespace LiverAR.Runtime
             }
         }
 
-        static void EnsureRuntimeOpacityShader(Material material, float alpha)
+        static void EnsureRuntimeOpacityShader(Material material)
         {
-            if (alpha >= 0.99f || (material.shader != null && material.shader.name == "Universal Render Pipeline/Lit"))
+            var template = GetRuntimeOpacityTemplate();
+            var supportedShader = template != null ? template.shader : Shader.Find("Universal Render Pipeline/Lit");
+            if (supportedShader == null || material.shader == supportedShader)
                 return;
 
-            var transparentShader = Shader.Find("Universal Render Pipeline/Lit");
-            if (transparentShader == null)
-                return;
-
-            // glTFast materials are generated as opaque Shader Graph materials.
-            // URP Lit provides a runtime blend mode that responds to decimal alpha.
+            // glTFast's generated Shader Graph materials can be stripped from Android builds.
+            // Use the bundled URP material from the first frame so both normal and translucent
+            // views use a shader guaranteed to be present on the device.
             var mainTexture = material.mainTexture;
-            material.shader = transparentShader;
+            material.shader = supportedShader;
             if (mainTexture != null)
                 material.mainTexture = mainTexture;
+        }
+
+        static Material GetRuntimeOpacityTemplate()
+        {
+            if (runtimeOpacityTemplate == null)
+                runtimeOpacityTemplate = Resources.Load<Material>("RuntimeOpacityTransparent");
+
+            return runtimeOpacityTemplate;
         }
     }
 }
